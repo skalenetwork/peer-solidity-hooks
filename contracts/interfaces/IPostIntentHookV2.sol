@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.27;
 
 /**
  * @title IPostIntentHookV2
@@ -34,8 +34,5 @@ interface IPostIntentHookV2 {
      * @param _ctx Execution context with all intent details
      * @param _fulfillHookData Dynamic data passed at fulfill time
      */
-    function execute(
-        HookExecutionContext calldata _ctx,
-        bytes calldata _fulfillHookData
-    ) external;
+    function execute(HookExecutionContext calldata _ctx, bytes calldata _fulfillHookData) external;
 }
