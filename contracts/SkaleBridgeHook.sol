@@ -20,11 +20,14 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // Conflicts with solhint which recommends immutables to use ALL_CAPS
+    // slither-disable-start naming-convention
     /// @notice Peer.xyz OrchestratorV2 on Base
     address public immutable ORCHESTRATOR;
 
     /// @notice DepositBox contract for bridging (if available on Base)
     IDepositBoxERC20 public immutable DEPOSIT_BOX;
+    // slither-enable-end naming-convention
 
     /// @notice The SKALE chain name hash that this hook is associated with
     string public skaleChainName;
@@ -45,11 +48,16 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
     error TokenNotAllowedForSchain(string schainName, address token);
 
     modifier onlyOrchestrator() {
-        require(msg.sender == ORCHESTRATOR, OnlyOrchestrator());
+        _onlyOrchestrator();
         _;
     }
 
-    constructor(address _orchestrator, address _depositBox, address _messageProxy, string memory _skaleChainName)
+    constructor(
+        address _orchestrator,
+        address _depositBox,
+        address _messageProxy,
+        string memory _skaleChainName
+    )
         Ownable(msg.sender)
     {
         require(_orchestrator != address(0), InvalidAddress(_orchestrator));
@@ -79,7 +87,10 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
     }
 
     /// @inheritdoc IPostIntentHookV2
-    function execute(HookExecutionContext calldata ctx, bytes calldata fulfillHookData)
+    function execute(
+        HookExecutionContext calldata ctx,
+        bytes calldata fulfillHookData
+    )
         external
         override
         onlyOrchestrator
@@ -118,7 +129,7 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
 
     function _depositToSkale(address recipient, address token, string memory chainName, uint256 amount) private {
         // Pull tokens from orchestrator
-        IERC20(token).safeTransferFrom(ORCHESTRATOR, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         /// @dev Force that IMA requires a whitelist or the token is whitelisted on this contract
         require(
@@ -130,5 +141,9 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
 
         // Call depositERC20Direct
         DEPOSIT_BOX.depositERC20Direct(chainName, token, amount, recipient);
+    }
+
+    function _onlyOrchestrator() private view {
+        require(msg.sender == ORCHESTRATOR, OnlyOrchestrator());
     }
 }

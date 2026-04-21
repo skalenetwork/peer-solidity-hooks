@@ -4,7 +4,6 @@ permissions: {}
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 env:
@@ -78,3 +77,18 @@ jobs:
 
       - name: Run solhint
         run: yarn lint
+
+      - name: Slither
+        uses: crytic/slither-action@v0.4.2
+        with:
+          ignore-compile: true
+          slither-args: "--compile-force-framework hardhat"
+          node-version: 24
+
+      - name: Run tests
+        run: yarn hardhat coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
