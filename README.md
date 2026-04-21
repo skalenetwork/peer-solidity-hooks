@@ -69,8 +69,12 @@ the destination SKALE chain **or** whitelisted locally on this hook.
 contracts/              Solidity sources (Hardhat + Foundry)
   SkaleBridgeHook.sol
   interfaces/
+  mocks/                Test-only mock contracts
 script/                 Foundry deploy scripts
 migrations/             Hardhat deploy scripts (TypeScript)
+test/                   Hardhat/Mocha tests (TypeScript)
+  utils.ts              Typed deploy helpers shared across test files
+foundry-test/           Foundry tests (Solidity)
 ```
 
 Both toolchains compile the same source tree but write artifacts to separate
@@ -109,6 +113,30 @@ forge build
 yarn lint            # solhint
 forge fmt --check
 ```
+
+## Test
+
+### Hardhat
+
+```bash
+yarn test
+```
+
+Runs TypeScript compilation then the full Mocha suite via Hardhat. Coverage
+report is generated with:
+
+```bash
+yarn hardhat coverage
+```
+
+### Foundry
+
+```bash
+forge test -vvv
+```
+
+Deploy-script tests live in `foundry-test/` and are executed as part of the
+normal `forge test` run — no separate step is needed.
 
 ## Deploy
 
