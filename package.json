@@ -1,0 +1,52 @@
+{
+  "name": "peer-solidity-hooks",
+  "packageManager": "yarn@4.12.0",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
+    "@nomicfoundation/hardhat-ethers": "^3.1.2",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.0.3",
+    "chai": "^6.2.1",
+    "chalk": "^5",
+    "cspell": "^9.4.0",
+    "eslint": "^9.39.2",
+    "ethers": "^6.16.0",
+    "globals": "^16.5.0",
+    "hardhat": "^2.27.1",
+    "hardhat-dependency-compiler": "^1.2.1",
+    "pm2": "^6.0.14",
+    "solhint": "^6.0.3",
+    "solidity-coverage": "^0.8.17",
+    "solidity-docgen": "^0.6.0-beta.36",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.0"
+  },
+  "scripts": {
+    "compile": "yarn hardhat compile",
+    "cleanCompile": "yarn hardhat clean && yarn compile",
+    "cspell": "yarn exec cspell .",
+    "eslint": "yarn exec eslint .",
+    "fullCheck": "yarn compile && yarn lint && yarn tsc && yarn eslint",
+    "hooks": "git config core.hooksPath .githooks",
+    "lint": "yarn solhint 'contracts/**/*.sol'",
+    "no-hooks": "git config core.hooksPath .git/hooks",
+    "slither": "yarn cleanCompile && slither . --compile-force-framework hardhat",
+    "test": "yarn tsc && npx hardhat test",
+    "tsc": "yarn exec tsc --noEmit",
+    "docgen": "yarn hardhat docgen"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.6.1",
+    "@skalenetwork/ima-interfaces": "^3.0.0-stable.0",
+    "@skalenetwork/skale-manager-interfaces": "^3.3.0-stable.0",
+    "@skalenetwork/upgrade-tools": "4.0.0-develop.11",
+    "dotenv": "^17.2.3"
+  }
+}

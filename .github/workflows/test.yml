@@ -4,11 +4,11 @@ permissions: {}
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 env:
   FOUNDRY_PROFILE: ci
+  NODE_VERSION: 24
 
 jobs:
   check:
@@ -31,8 +31,65 @@ jobs:
       - name: Run Forge fmt
         run: forge fmt --check
 
+      - name: Install Forge dependencies
+        run: forge install foundry-rs/forge-std --no-git
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
       - name: Run Forge build
         run: forge build --sizes
 
       - name: Run Forge tests
         run: forge test -vvv
+
+  hardhat:
+    name: Hardhat project
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Compile contracts
+        run: yarn compile
+
+      - name: Run solhint
+        run: yarn lint
+
+      - name: Slither
+        uses: crytic/slither-action@v0.4.2
+        with:
+          ignore-compile: true
+          slither-args: "--compile-force-framework hardhat"
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run tests
+        run: yarn hardhat coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

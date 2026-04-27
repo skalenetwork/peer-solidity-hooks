@@ -1,14 +1,47 @@
-# Compiler files
-cache/
-out/
+# artifacts
+/data/
 
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/**/dry-run/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
-# Docs
-docs/
+# Whether you use PnP or not, the node_modules folder is often used to store
+# build artifacts that should be gitignored
+node_modules
 
-# Dotenv file
+# Swap the comments on the following lines if you wish to use zero-installs
+# In that case, don't forget to run `yarn config set enableGlobalCache false`!
+# Documentation here: https://yarnpkg.com/features/caching#zero-installs
+
+#!.yarn/cache
+.pnp.*
+
+node_modules
 .env
+
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# imported contracts
+contracts/hardhat-dependency-compiler
+
+# Foundry
+/forge-out
+/forge-cache
+/broadcast
+/lib
