@@ -8,6 +8,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  NODE_VERSION: 24
 
 jobs:
   check:
@@ -36,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -64,7 +65,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Enable Corepack
         run: corepack enable
@@ -83,7 +84,7 @@ jobs:
         with:
           ignore-compile: true
           slither-args: "--compile-force-framework hardhat"
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Run tests
         run: yarn hardhat coverage
