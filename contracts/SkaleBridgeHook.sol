@@ -61,6 +61,7 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
         Ownable(msg.sender)
     {
         require(_orchestrator != address(0), InvalidAddress(_orchestrator));
+        require(_depositBox != address(0), InvalidAddress(_depositBox));
         require(_messageProxy != address(0), InvalidAddress(_messageProxy));
         require(IMessageProxyForMainnet(_messageProxy).isConnectedChain(_skaleChainName), InvalidSourceChain());
         ORCHESTRATOR = _orchestrator;
@@ -106,13 +107,14 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
         }
 
         // No logic is based on time
-        emit BridgeInitiated(
-            ctx.intentHash,
-            recipient,
-            ctx.executableAmount,
+        emit BridgeInitiated({
+            intentHash: ctx.intentHash,
+            recipient: recipient,
+            token: ctx.token,
+            amount: ctx.executableAmount,
             // solhint-disable-next-line not-rely-on-time
-            block.timestamp
-        );
+            timestamp: block.timestamp
+        });
 
         _depositToSkale(recipient, ctx.token, skaleChainName, ctx.executableAmount);
     }
