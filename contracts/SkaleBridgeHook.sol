@@ -90,21 +90,14 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
     /// @inheritdoc IPostIntentHookV2
     function execute(
         HookExecutionContext calldata ctx,
-        bytes calldata fulfillHookData
+        bytes calldata /* unused: _fulfillHookData*/
     )
         external
         override
         onlyOrchestrator
     {
-        // TODO: We can do more stuff here - support passing chain name, suport taking a fee, etc.
-        // Get recipient - allow override via fulfillHookData
+        // TODO: We can add features here with input data _fulfillHookData
         address recipient = ctx.intent.to;
-        if (fulfillHookData.length > 31) {
-            (address overrideRecipient) = abi.decode(fulfillHookData, (address));
-            if (overrideRecipient != address(0)) {
-                recipient = overrideRecipient;
-            }
-        }
 
         // No logic is based on time
         emit BridgeInitiated({

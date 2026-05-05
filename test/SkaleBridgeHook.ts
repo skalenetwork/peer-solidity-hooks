@@ -45,10 +45,6 @@ function buildContext(
     };
 }
 
-function encodeRecipient(address: string): string {
-    return ethers.AbiCoder.defaultAbiCoder().encode(["address"], [address]);
-}
-
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 async function deployBaseFixture() {
@@ -389,11 +385,10 @@ describe("Testing SkaleBridgeHook", () => {
         let hook: SkaleBridgeHook;
         let orchestrator: HardhatEthersSigner;
         let user: HardhatEthersSigner;
-        let other: HardhatEthersSigner;
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, orchestrator, user, other, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
+            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
         });
 
         it("uses intent.to as recipient when fulfillHookData is empty", async () => {
@@ -404,27 +399,11 @@ describe("Testing SkaleBridgeHook", () => {
                 .withArgs(ctx.intentHash, user.address, tokenAddr, anyValue, anyValue);
         });
 
-        it("uses intent.to as recipient when fulfillHookData is shorter than 32 bytes", async () => {
+        it("uses intent.to as recipient when fulfillHookData is non-empty", async () => {
             const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-            const shortData = ethers.hexlify(ethers.randomBytes(20));
+            const ignoredData = ethers.hexlify(ethers.randomBytes(20));
 
-            await expect(hook.connect(orchestrator).execute(ctx, shortData))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, user.address, tokenAddr, anyValue, anyValue);
-        });
-
-        it("overrides recipient when fulfillHookData encodes a non-zero address", async () => {
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(other.address)))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, other.address, tokenAddr, anyValue, anyValue);
-        });
-
-        it("keeps intent.to when fulfillHookData encodes the zero address", async () => {
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(ethers.ZeroAddress)))
+            await expect(hook.connect(orchestrator).execute(ctx, ignoredData))
                 .to.emit(hook, "BridgeInitiated")
                 .withArgs(ctx.intentHash, user.address, tokenAddr, anyValue, anyValue);
         });
@@ -490,11 +469,10 @@ describe("Testing SkaleBridgeHook", () => {
         let hook: SkaleBridgeHook;
         let orchestrator: HardhatEthersSigner;
         let user: HardhatEthersSigner;
-        let other: HardhatEthersSigner;
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, orchestrator, user, other, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
+            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
         });
 
         it("emits BridgeInitiated with the correct intentHash, recipient, token, amount and timestamp", async () => {
@@ -504,15 +482,6 @@ describe("Testing SkaleBridgeHook", () => {
             await expect(hook.connect(orchestrator).execute(ctx, "0x"))
                 .to.emit(hook, "BridgeInitiated")
                 .withArgs(intentHash, user.address, tokenAddr, BRIDGE_AMOUNT, anyValue);
-        });
-
-        it("emits BridgeInitiated with the overridden recipient from fulfillHookData", async () => {
-            const intentHash = ethers.hexlify(ethers.randomBytes(32));
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address, intentHash);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(other.address)))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(intentHash, other.address, tokenAddr, BRIDGE_AMOUNT, anyValue);
         });
 
         it("emits BridgeInitiated with a non-zero timestamp", async () => {
