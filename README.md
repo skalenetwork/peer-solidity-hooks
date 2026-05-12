@@ -32,9 +32,7 @@ At fulfill time the Orchestrator:
 
 `SkaleBridgeHook` uses that allowance to pull the tokens from the Orchestrator,
 approves the IMA `DepositBoxERC20`, and calls `depositERC20Direct` to deliver
-them to the recipient on the configured SKALE chain. The recipient defaults to
-`ctx.intent.to` and can be overridden by passing an ABI-encoded `address` in
-`fulfillHookData`.
+them to `ctx.intent.to` on the configured SKALE chain.
 
 See [docs.peer.xyz — Post-intent hooks](https://docs.peer.xyz/developer/developer/api/v3/post-intent-hooks)
 for the full hook lifecycle and invariants.
@@ -190,23 +188,7 @@ await orchestrator.signalIntent({
 });
 ```
 
-Optionally override the destination address at fulfill time by passing an
-ABI-encoded `address` as `postIntentHookData`:
-
-```ts
-await orchestrator.fulfillIntent({
-  paymentProof,
-  intentHash,
-  verificationData: "0x",
-  postIntentHookData: ethers.AbiCoder.defaultAbiCoder().encode(
-    ["address"],
-    [overrideRecipient],
-  ),
-});
-```
-
-If `postIntentHookData` is empty (or decodes to `address(0)`) the hook uses
-`ctx.intent.to`.
+At fulfill time, this hook always bridges to `ctx.intent.to`.
 
 ## Reference addresses
 
@@ -303,7 +285,7 @@ await orchestrator.signalIntent({
   to: recipientAddress,
   paymentMethod: keccak256("card"),
   postIntentHook: hookAddress, // SkaleBridgeHook address
-  data: abi.encode(recipientAddress) // Optional: override recipient
+  data: "0x" // Can pass arbitrary bytes, but currently unused by Skale
 });
 ```
 

@@ -9,10 +9,11 @@ interface ISkaleBridgeHook is IPostIntentHookV2 {
     /// @notice Emitted when a bridge is initiated from Base to SKALE
     /// @param intentHash The hash of the fulfilled intent that triggered the bridge
     /// @param recipient The final recipient on SKALE Base
+    /// @param token The token bridged to SKALE Base
     /// @param amount The amount of tokens to be bridged
     /// @param timestamp The time at which the bridge was initiated
     event BridgeInitiated(
-        bytes32 indexed intentHash, address indexed recipient, uint256 indexed amount, uint256 timestamp
+        bytes32 indexed intentHash, address indexed recipient, address indexed token, uint256 amount, uint256 timestamp
     );
 
     /// @notice Add a token to the whitelist

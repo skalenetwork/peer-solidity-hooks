@@ -45,10 +45,6 @@ function buildContext(
     };
 }
 
-function encodeRecipient(address: string): string {
-    return ethers.AbiCoder.defaultAbiCoder().encode(["address"], [address]);
-}
-
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 async function deployBaseFixture() {
@@ -78,12 +74,12 @@ async function deployHookFixture() {
 }
 
 /**
- * Hook deployed with deposit box in "open" mode:
- * setWhitelistEnabled(true) → DEPOSIT_BOX.isWhitelisted() returns true → hook allows any token.
+ * Hook deployed with IMA whitelist enabled:
+ * setWhitelistEnabled(true) → DEPOSIT_BOX.isWhitelisted() returns true.
  * Token mapping is set so the mock's depositERC20Direct does not revert.
  * Orchestrator is funded and has approved the hook.
  */
-async function deployOpenDepositBoxFixture() {
+async function deployWhitelistEnabledFixture() {
     const base = await deployHookFixture();
     const { orchestrator, mockDepositBox, mockToken, hook } = base;
 
@@ -101,12 +97,12 @@ async function deployOpenDepositBoxFixture() {
 }
 
 /**
- * Hook deployed with deposit box in "strict" mode:
- * setWhitelistEnabled(false) → DEPOSIT_BOX.isWhitelisted() returns false → only hook-whitelisted tokens pass.
+ * Hook deployed with IMA automatic deploy enabled:
+ * setWhitelistEnabled(false) → DEPOSIT_BOX.isWhitelisted() returns false, so the hook requires its local whitelist.
  * Token mapping is set so the mock's depositERC20Direct succeeds once the hook allows the token through.
  * Orchestrator is funded and has approved the hook.
  */
-async function deployStrictDepositBoxFixture() {
+async function deployAutoDeployFixture() {
     const base = await deployHookFixture();
     const { orchestrator, mockDepositBox, mockToken, hook } = base;
 
@@ -154,6 +150,20 @@ describe("Testing SkaleBridgeHook", () => {
                     orchestrator.address,
                     await mockDepositBox.getAddress(),
                     ethers.ZeroAddress,
+                    SCHAIN_NAME,
+                ),
+            ).to.be.revertedWithCustomError(factory, "InvalidAddress").withArgs(ethers.ZeroAddress);
+        });
+
+        it("reverts with InvalidAddress when depositBox is zero address", async () => {
+            const { orchestrator, mockProxy } = await loadFixture(deployBaseFixture);
+            const factory = await ethers.getContractFactory("SkaleBridgeHook");
+
+            await expect(
+                factory.deploy(
+                    orchestrator.address,
+                    ethers.ZeroAddress,
+                    await mockProxy.getAddress(),
                     SCHAIN_NAME,
                 ),
             ).to.be.revertedWithCustomError(factory, "InvalidAddress").withArgs(ethers.ZeroAddress);
@@ -375,11 +385,10 @@ describe("Testing SkaleBridgeHook", () => {
         let hook: SkaleBridgeHook;
         let orchestrator: HardhatEthersSigner;
         let user: HardhatEthersSigner;
-        let other: HardhatEthersSigner;
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, orchestrator, user, other, tokenAddr } = await loadFixture(deployOpenDepositBoxFixture));
+            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
         });
 
         it("uses intent.to as recipient when fulfillHookData is empty", async () => {
@@ -387,38 +396,22 @@ describe("Testing SkaleBridgeHook", () => {
 
             await expect(hook.connect(orchestrator).execute(ctx, "0x"))
                 .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, user.address, anyValue, anyValue);
+                .withArgs(ctx.intentHash, user.address, tokenAddr, anyValue, anyValue);
         });
 
-        it("uses intent.to as recipient when fulfillHookData is shorter than 32 bytes", async () => {
+        it("uses intent.to as recipient when fulfillHookData is non-empty", async () => {
             const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-            const shortData = ethers.hexlify(ethers.randomBytes(20));
+            const ignoredData = ethers.hexlify(ethers.randomBytes(20));
 
-            await expect(hook.connect(orchestrator).execute(ctx, shortData))
+            await expect(hook.connect(orchestrator).execute(ctx, ignoredData))
                 .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, user.address, anyValue, anyValue);
-        });
-
-        it("overrides recipient when fulfillHookData encodes a non-zero address", async () => {
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(other.address)))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, other.address, anyValue, anyValue);
-        });
-
-        it("keeps intent.to when fulfillHookData encodes the zero address", async () => {
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(ethers.ZeroAddress)))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(ctx.intentHash, user.address, anyValue, anyValue);
+                .withArgs(ctx.intentHash, user.address, tokenAddr, anyValue, anyValue);
         });
     });
 
-    // ── execute – token gating (strict deposit box mode) ─────────────────────────
+    // ── execute – token gating (IMA auto-deploy mode) ────────────────────────────
 
-    describe("execute – token gating (DEPOSIT_BOX.isWhitelisted = false, strict mode)", () => {
+    describe("execute – token gating (DEPOSIT_BOX.isWhitelisted = false, IMA auto-deploy)", () => {
         let hook: SkaleBridgeHook;
         let owner: HardhatEthersSigner;
         let orchestrator: HardhatEthersSigner;
@@ -426,7 +419,7 @@ describe("Testing SkaleBridgeHook", () => {
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, owner, orchestrator, user, tokenAddr } = await loadFixture(deployStrictDepositBoxFixture));
+            ({ hook, owner, orchestrator, user, tokenAddr } = await loadFixture(deployAutoDeployFixture));
         });
 
         it("reverts with TokenNotAllowedForSchain when token is not in hook whitelist", async () => {
@@ -445,25 +438,25 @@ describe("Testing SkaleBridgeHook", () => {
         });
     });
 
-    // ── execute – token gating (open deposit box mode) ────────────────────────────
+    // ── execute – token gating (IMA whitelist enabled) ────────────────────────────
 
-    describe("execute – token gating (DEPOSIT_BOX.isWhitelisted = true, open mode)", () => {
+    describe("execute – token gating (DEPOSIT_BOX.isWhitelisted = true, IMA whitelist enabled)", () => {
         let hook: SkaleBridgeHook;
         let orchestrator: HardhatEthersSigner;
         let user: HardhatEthersSigner;
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployOpenDepositBoxFixture));
+            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
         });
 
-        it("allows any token without being added to the hook whitelist", async () => {
+        it("allows a mapped token without being added to the hook whitelist", async () => {
             const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
             await expect(hook.connect(orchestrator).execute(ctx, "0x")).to.emit(hook, "BridgeInitiated");
         });
 
         it("still succeeds when token is also in the hook whitelist", async () => {
-            const { owner } = await loadFixture(deployOpenDepositBoxFixture);
+            const { owner } = await loadFixture(deployWhitelistEnabledFixture);
             await hook.connect(owner).addTokenToWhitelist(tokenAddr);
             const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address);
             await expect(hook.connect(orchestrator).execute(ctx, "0x")).to.emit(hook, "BridgeInitiated");
@@ -476,29 +469,19 @@ describe("Testing SkaleBridgeHook", () => {
         let hook: SkaleBridgeHook;
         let orchestrator: HardhatEthersSigner;
         let user: HardhatEthersSigner;
-        let other: HardhatEthersSigner;
         let tokenAddr: string;
 
         beforeEach(async () => {
-            ({ hook, orchestrator, user, other, tokenAddr } = await loadFixture(deployOpenDepositBoxFixture));
+            ({ hook, orchestrator, user, tokenAddr } = await loadFixture(deployWhitelistEnabledFixture));
         });
 
-        it("emits BridgeInitiated with the correct intentHash, recipient, amount and a timestamp", async () => {
+        it("emits BridgeInitiated with the correct intentHash, recipient, token, amount and timestamp", async () => {
             const intentHash = ethers.hexlify(ethers.randomBytes(32));
             const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address, intentHash);
 
             await expect(hook.connect(orchestrator).execute(ctx, "0x"))
                 .to.emit(hook, "BridgeInitiated")
-                .withArgs(intentHash, user.address, BRIDGE_AMOUNT, anyValue);
-        });
-
-        it("emits BridgeInitiated with the overridden recipient from fulfillHookData", async () => {
-            const intentHash = ethers.hexlify(ethers.randomBytes(32));
-            const ctx = buildContext(tokenAddr, BRIDGE_AMOUNT, user.address, intentHash);
-
-            await expect(hook.connect(orchestrator).execute(ctx, encodeRecipient(other.address)))
-                .to.emit(hook, "BridgeInitiated")
-                .withArgs(intentHash, other.address, BRIDGE_AMOUNT, anyValue);
+                .withArgs(intentHash, user.address, tokenAddr, BRIDGE_AMOUNT, anyValue);
         });
 
         it("emits BridgeInitiated with a non-zero timestamp", async () => {
@@ -507,7 +490,9 @@ describe("Testing SkaleBridgeHook", () => {
             const receipt = await tx.wait();
             const block = await ethers.provider.getBlock(receipt!.blockNumber);
 
-            await expect(tx).to.emit(hook, "BridgeInitiated").withArgs(anyValue, anyValue, anyValue, block!.timestamp);
+            await expect(tx)
+                .to.emit(hook, "BridgeInitiated")
+                .withArgs(anyValue, anyValue, tokenAddr, anyValue, block!.timestamp);
         });
     });
 
@@ -525,7 +510,7 @@ describe("Testing SkaleBridgeHook", () => {
 
         beforeEach(async () => {
             ({ hook, orchestrator, user, mockToken, mockDepositBox, tokenAddr, hookAddr, depositBoxAddr } =
-                await loadFixture(deployOpenDepositBoxFixture));
+                await loadFixture(deployWhitelistEnabledFixture));
         });
 
         it("moves tokens from the orchestrator to the deposit box", async () => {

@@ -61,6 +61,7 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
         Ownable(msg.sender)
     {
         require(_orchestrator != address(0), InvalidAddress(_orchestrator));
+        require(_depositBox != address(0), InvalidAddress(_depositBox));
         require(_messageProxy != address(0), InvalidAddress(_messageProxy));
         require(IMessageProxyForMainnet(_messageProxy).isConnectedChain(_skaleChainName), InvalidSourceChain());
         ORCHESTRATOR = _orchestrator;
@@ -89,30 +90,24 @@ contract SkaleBridgeHook is ISkaleBridgeHook, Ownable2Step {
     /// @inheritdoc IPostIntentHookV2
     function execute(
         HookExecutionContext calldata ctx,
-        bytes calldata fulfillHookData
+        bytes calldata /* unused: _fulfillHookData*/
     )
         external
         override
         onlyOrchestrator
     {
-        // TODO: We can do more stuff here - support passing chain name, suport taking a fee, etc.
-        // Get recipient - allow override via fulfillHookData
+        // TODO: We can add features here with input data _fulfillHookData
         address recipient = ctx.intent.to;
-        if (fulfillHookData.length > 31) {
-            (address overrideRecipient) = abi.decode(fulfillHookData, (address));
-            if (overrideRecipient != address(0)) {
-                recipient = overrideRecipient;
-            }
-        }
 
         // No logic is based on time
-        emit BridgeInitiated(
-            ctx.intentHash,
-            recipient,
-            ctx.executableAmount,
+        emit BridgeInitiated({
+            intentHash: ctx.intentHash,
+            recipient: recipient,
+            token: ctx.token,
+            amount: ctx.executableAmount,
             // solhint-disable-next-line not-rely-on-time
-            block.timestamp
-        );
+            timestamp: block.timestamp
+        });
 
         _depositToSkale(recipient, ctx.token, skaleChainName, ctx.executableAmount);
     }
